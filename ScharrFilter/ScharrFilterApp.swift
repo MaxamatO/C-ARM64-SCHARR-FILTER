@@ -13,5 +13,6 @@ struct ScharrFilterApp: App {
         WindowGroup {
             ContentView()
         }
+        
     }
 }
