@@ -140,7 +140,7 @@ struct ContentView: View {
                 bitsPerComponent: bitsPerComponent,
                 bytesPerRow: bytesPerRow,
                 space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
             ) else {
                 print("Nie udało się stworzyć kontekstu źródłowego")
                 return nil
@@ -160,7 +160,7 @@ struct ContentView: View {
                 bitsPerComponent: Int(returnedCImage.bitsPerComponent),
                 bytesPerRow: Int(returnedCImage.bytesPerRow),
                 space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
             ),
             let newCGImage = newContext.makeImage() else {
                 print("Nie udało się stworzyć nowego CGImage")
@@ -169,7 +169,9 @@ struct ContentView: View {
 
             let nsImage = NSImage(cgImage: newCGImage, size: NSSize(width: width, height: height))
             self.processedImage = nsImage;
+            free(returnedCImage.data!)
         }
+        
         return nil;
     }
 }
