@@ -8,21 +8,30 @@
 import SwiftUI
 import AppKit
 internal import UniformTypeIdentifiers
+import Darwin
+import Foundation
 
-class CImageFields{
-    var data: UnsafeMutablePointer<UInt8>?
-    var width: Int32?
-    var height: Int32?
-    var bitsPerComponent: Int32?
-    var bytesPerRow: Int32?
-    var colorSpace = 0
-    var bitmapInfo = 0
-}
+
 
 struct ContentView: View {
     @State private var inputImage: NSImage? = nil
     @State private var processedImage: NSImage? = nil
-    
+    struct CProcessedData{
+        var data: UnsafeMutablePointer<UInt8>?
+        var height: Int32 = 1
+        var width: Int32 = 1
+        var bytesPerRow: Int32 = 4
+        var bitsPerComponent: Int32 = 8
+    }
+
+    typealias ProcessImageFunctionC = @convention(c) (
+        UnsafeMutablePointer<UInt8>,
+        Int32,
+        Int32,
+        Int32,
+        UnsafeMutableRawPointer
+    ) -> Void
+
     var body: some View {
         VStack {
             Text("Scharr Filter Preview")
@@ -104,7 +113,6 @@ struct ContentView: View {
         .frame(minWidth: 800, minHeight: 500)
     }
 
-    // MARK: - Finder image picker
     func openImageWithFinder() {
         let panel = NSOpenPanel()
         panel.title = "Wybierz obraz do filtracji"
@@ -118,11 +126,17 @@ struct ContentView: View {
             }
         }
     }
-    // MARK: - C function filtering
-    func filterImageC() -> Void?{
-        guard let cgImage = inputImage?.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            return nil
-        }
+    
+    func filterImageC() -> Void? {
+        runDynamicFilter(symbolName: "processImage")
+    }
+
+    func filterImageASM() -> Void? {
+        return nil
+    }
+    
+    func runDynamicFilter(symbolName: String) -> Void? {
+        guard let cgImage = inputImage?.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
         
         let width = cgImage.width
         let height = cgImage.height
@@ -130,49 +144,87 @@ struct ContentView: View {
         let bytesPerPixel = 4
         let bytesPerRow = width * bytesPerPixel
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        
         var pixelData = [UInt8](repeating: 0, count: height * bytesPerRow)
         
-        guard let context = CGContext(
-                data: &pixelData,
-                width: width,
-                height: height,
-                bitsPerComponent: bitsPerComponent,
-                bytesPerRow: bytesPerRow,
-                space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
-            ) else {
-                print("Nie udało się stworzyć kontekstu źródłowego")
-                return nil
-            }
-
-            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        pixelData.withUnsafeMutableBytes { rawBufferPtr in
-            let pixelsPtr = rawBufferPtr.bindMemory(to: UInt8.self).baseAddress!
-            
-            let returnedCImage = processImage(pixelsPtr, Int32(width), Int32(height), Int32(bytesPerRow))
-
-            guard let newContext = CGContext(
-                data: returnedCImage.data,
-                width: Int(returnedCImage.width),
-                height: Int(returnedCImage.height),
-                bitsPerComponent: Int(returnedCImage.bitsPerComponent),
-                bytesPerRow: Int(returnedCImage.bytesPerRow),
-                space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
-            ),
-            let newCGImage = newContext.makeImage() else {
-                print("Nie udało się stworzyć nowego CGImage")
-                return
-            }
-
-            let nsImage = NSImage(cgImage: newCGImage, size: NSSize(width: width, height: height))
-            self.processedImage = nsImage;
-            free(returnedCImage.data!)
+        guard let frameworksPath = Bundle.main.privateFrameworksPath else {
+            print("Nie znaleziono sciezki do frameworka")
+            return nil
         }
         
-        return nil;
+        let dylibPath = frameworksPath + "/ScharrCore.framework/ScharrCore"
+        
+        let handle = dlopen(dylibPath, RTLD_NOW)
+        guard handle != nil else {
+            let error = String(cString: dlerror())
+            print("Błąd ładowania biblioteki (\(dylibPath)): \(error)")
+            return nil
+        }
+
+        
+        let symbol = dlsym(handle, symbolName)
+        guard symbol != nil else {
+            print("Błąd: Nie znaleziono symbolu \(symbolName).")
+            dlclose(handle)
+            return nil
+        }
+
+        let processImagePtr = unsafeBitCast(symbol, to: ProcessImageFunctionC.self)
+        
+        guard let context = CGContext(
+            data: &pixelData,
+            width: width,
+            height: height,
+            bitsPerComponent: bitsPerComponent,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        ) else {
+            print("Nie udało się stworzyć kontekstu źródłowego")
+            dlclose(handle)
+            return nil
+        }
+
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var result = CProcessedData()
+    
+        pixelData.withUnsafeMutableBytes { rawBufferPtr in
+            let pixelsPtr = rawBufferPtr.bindMemory(to: UInt8.self).baseAddress!
+
+            withUnsafeMutablePointer(to: &result){
+                $0.withMemoryRebound(to: CProcessedData.self, capacity: 1) { resultPtr in
+                    processImagePtr(
+                        pixelsPtr,
+                        Int32(width),
+                        Int32(height),
+                        Int32(bytesPerRow),
+                        UnsafeMutableRawPointer(resultPtr)
+                    )
+                }
+            }
+        }
+        defer{dlclose(handle)}
+        guard let dataPtr = result.data else {
+            print("brak danych w struktrze")
+            return nil
+        }
+        guard let newContext = CGContext(
+                    data: dataPtr,
+                    width: Int(result.width),
+                    height: Int(result.height),
+                    bitsPerComponent: Int(result.bitsPerComponent),
+                    bytesPerRow: Int(result.bytesPerRow),
+                    space: colorSpace,
+                    bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+                ), let newCGImage = newContext.makeImage() else {
+                    print("Nie udało się stworzyć nowego CGImage")
+                    return nil
+                }
+
+                let nsImage = NSImage(cgImage: newCGImage, size: NSSize(width: width, height: height))
+                self.processedImage = nsImage
+        
+        return nil
     }
 }
 

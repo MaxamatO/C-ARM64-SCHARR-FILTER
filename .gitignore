@@ -1,0 +1,68 @@
+# ----------------------------------------------------------------------
+# PLIKI GENEROWANE PRZEZ XCODE
+# ----------------------------------------------------------------------
+
+# Foldery Build
+build/
+*.xcodeproj/project.xcworkspace/
+*.xcworkspace/
+# Pamiętaj, aby nie ignorować *your_project_name*.xcodeproj/project.pbxproj
+# ponieważ zawiera kluczowe ustawienia projektu.
+
+# Derived Data (dane wygenerowane przez Xcode)
+DerivedData/
+
+# Pliki User/Workspace
+*.xcuserdatad
+*.xcuserstate
+
+# Cache Danych Modułów Swift
+.swiftpm/
+.swiftmodule/
+.swiftdoc/
+
+# Pliki automatycznej kompilacji
+.build/
+Package.resolved
+
+# Zależności Swift Package Manager (jeśli nie używasz Frameworków)
+# Zwykle to jest w DerivedData, ale dodane dla pewności.
+Packages/
+
+# ----------------------------------------------------------------------
+# PLIKI ZALEŻNOŚCI (PODS I INNE)
+# ----------------------------------------------------------------------
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# ----------------------------------------------------------------------
+# Pliki MACOS I SYSTEMOWE
+# ----------------------------------------------------------------------
+
+# Ukryte pliki macOS
+.DS_Store
+
+# Pliki zasobów
+*.xcassets/
+xcuserdata/
+
+# Zapisane stany aplikacji
+*.appiconset/
+*.appiconset/Contents.json
+
+# ----------------------------------------------------------------------
+# PLIKI SYMULATORA I CRASH DUMPY
+# ----------------------------------------------------------------------
+
+# Crash Dumpy
+*.dSYM
+*.xcarchive
+*.ipa
+
+# Logi (np. te generowane podczas dynamicznego ładowania)
+*.log

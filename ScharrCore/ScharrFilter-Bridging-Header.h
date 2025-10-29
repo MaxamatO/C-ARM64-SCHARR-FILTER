@@ -1,15 +1,18 @@
 
 #include <stdint.h>
-struct CProcessedData {
-    uint8_t *data;
-    int width;
-    int height;
-    int bitsPerComponent;
-    int bytesPerRow;
-};
+
+typedef struct {
+    void* data;
+    int32_t height;
+    int32_t width;
+    int32_t bytesPerRow;
+    int32_t bitsPerComponent;
+} CProcessedData;
 
 void callHello(void);
-struct CProcessedData processImage(uint8_t *pixels, int width, int height, int bytesPerRow);
+
+__attribute__((visibility("default")))
+void processImage(uint8_t *p_pixels, int width, int height, int bytesPerRow, void *p_dataOut);
 void convertToGreyScale(uint8_t *p_originalPixels, uint8_t *destination,int width, int height, int bytesPerRow);
 void calculateRows(uint8_t *p_greyScalePixels, int16_t *p_xScharrPixels, int width, int height, int bytesPerRow);
 void calculateColumns(uint8_t *p_greyScalePixels, int16_t *p_yScharrPixels, int width, int height, int bytesPerRow);

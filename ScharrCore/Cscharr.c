@@ -11,20 +11,13 @@
 #include "ScharrFilter-Bridging-Header.h"
 #include "math.h"
 
+
 extern void hello(void);
 
 void callHello(void){
     printf("Odpalam asm");
     hello();
 }
-/*
-data: &pixelData,
-width: width,
-height: height,
-bitsPerComponent: bitsPerComponent,
-bytesPerRow: bytesPerRow,
-space: colorSpace,
-bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue */
 
 int g_kernelDx[3][3] = {
     {3, 0, -3},
@@ -121,7 +114,8 @@ void convertToGreyScale(uint8_t *p_originalPixels, uint8_t *destination,int widt
     }
 }
 
-struct CProcessedData processImage(uint8_t *p_pixels, int width, int height, int bytesPerRow) {
+__attribute__((visibility("default")))
+void processImage(uint8_t *p_pixels, int width, int height, int bytesPerRow, void *p_dataOut) {
     
     int pixelsSize = height * width;
     uint8_t *p_greyScalePixels = (uint8_t*)malloc(pixelsSize);
@@ -140,18 +134,15 @@ struct CProcessedData processImage(uint8_t *p_pixels, int width, int height, int
     uint8_t *p_scharrFilteredPixels = (uint8_t*)malloc(height*bytesPerRow);
     expandToRGBA(p_combinedPixels, p_scharrFilteredPixels, width, height, bytesPerRow);
     
-    struct CProcessedData processedData = {
-        .data = p_scharrFilteredPixels,
-        .height = height,
-        .width = width,
-        .bytesPerRow = bytesPerRow,
-        .bitsPerComponent = 8
-    };
+    CProcessedData *p_processedData = (CProcessedData*)p_dataOut;
+    p_processedData->data = p_scharrFilteredPixels;
+    p_processedData->width = width;
+    p_processedData->height = height;
+    p_processedData->bitsPerComponent = 8;
+    p_processedData->bytesPerRow = bytesPerRow;
+    
     free(p_greyScalePixels);
     free(p_xScharrPixels);
     free(p_yScharrPixels);
     free(p_combinedPixels);
-    
-    printf("C: processedData ptr=%p %dx%d\n", processedData.data, processedData.width, processedData.height);
-    return processedData;
 }
