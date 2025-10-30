@@ -16,6 +16,7 @@ import Foundation
 struct ContentView: View {
     @State private var inputImage: NSImage? = nil
     @State private var processedImage: NSImage? = nil
+    @State private var threadCount: Int = 1
     struct CProcessedData{
         var data: UnsafeMutablePointer<UInt8>?
         var height: Int32 = 1
@@ -26,6 +27,7 @@ struct ContentView: View {
 
     typealias ProcessImageFunctionC = @convention(c) (
         UnsafeMutablePointer<UInt8>,
+        Int32,
         Int32,
         Int32,
         Int32,
@@ -53,6 +55,19 @@ struct ContentView: View {
                     .padding(.bottom)
                 }
             }
+            VStack(alignment: .leading) {
+                            Text("Liczba wątków: \(threadCount)")
+                                .font(.headline)
+                Slider(value: $threadCount.double, in: 1...64, step: 1) {
+                                Text("Liczba wątków")
+                            } minimumValueLabel: {
+                                Text("1")
+                            } maximumValueLabel: {
+                                Text("64")
+                            }
+                            .padding(.horizontal)
+                        }
+                        .padding(.bottom, 10)
 
             HStack {
                 VStack {
@@ -112,6 +127,13 @@ struct ContentView: View {
         .padding()
         .frame(minWidth: 800, minHeight: 500)
     }
+    
+    private struct IntDoubleBinding: View {
+            @Binding var value: Int
+            var body: some View {
+                Slider(value: Binding(get: { Double(value) }, set: { value = Int($0) }), in: 1...64, step: 1)
+            }
+        }
 
     func openImageWithFinder() {
         let panel = NSOpenPanel()
@@ -185,6 +207,7 @@ struct ContentView: View {
         }
 
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let finalThreadCount = threadCount
 
         var result = CProcessedData()
     
@@ -198,6 +221,7 @@ struct ContentView: View {
                         Int32(width),
                         Int32(height),
                         Int32(bytesPerRow),
+                        Int32(finalThreadCount),
                         UnsafeMutableRawPointer(resultPtr)
                     )
                 }
@@ -225,6 +249,15 @@ struct ContentView: View {
                 self.processedImage = nsImage
         
         return nil
+    }
+}
+extension Binding where Value == Int {
+    var double: Binding<Double> {
+        return Binding<Double>(get: {
+            Double(self.wrappedValue)
+        }, set: {
+            self.wrappedValue = Int($0)
+        })
     }
 }
 

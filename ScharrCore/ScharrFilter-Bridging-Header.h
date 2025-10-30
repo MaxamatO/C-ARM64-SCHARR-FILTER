@@ -12,7 +12,7 @@ typedef struct {
 void callHello(void);
 
 __attribute__((visibility("default")))
-void processImage(uint8_t *p_pixels, int width, int height, int bytesPerRow, void *p_dataOut);
+void processImage(uint8_t *p_pixels, int width, int height, int bytesPerRow, int threadCount, void *p_dataOut);
 void convertToGreyScale(uint8_t *p_originalPixels, uint8_t *destination,int width, int height, int bytesPerRow);
 void calculateRows(uint8_t *p_greyScalePixels, int16_t *p_xScharrPixels, int width, int height, int bytesPerRow);
 void calculateColumns(uint8_t *p_greyScalePixels, int16_t *p_yScharrPixels, int width, int height, int bytesPerRow);

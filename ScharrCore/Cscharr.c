@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include "ScharrFilter-Bridging-Header.h"
 #include "math.h"
+#include "time.h"
 
 
 extern void hello(void);
@@ -115,8 +116,11 @@ void convertToGreyScale(uint8_t *p_originalPixels, uint8_t *destination,int widt
 }
 
 __attribute__((visibility("default")))
-void processImage(uint8_t *p_pixels, int width, int height, int bytesPerRow, void *p_dataOut) {
+void processImage(uint8_t *p_pixels, int width, int height, int bytesPerRow, int threadCount, void *p_dataOut) {
+    printf("Robie na %d watkach", threadCount);
     
+    clock_t t;
+    t = clock();
     int pixelsSize = height * width;
     uint8_t *p_greyScalePixels = (uint8_t*)malloc(pixelsSize);
     convertToGreyScale(p_pixels, p_greyScalePixels, width, height, bytesPerRow);
@@ -145,4 +149,12 @@ void processImage(uint8_t *p_pixels, int width, int height, int bytesPerRow, voi
     free(p_xScharrPixels);
     free(p_yScharrPixels);
     free(p_combinedPixels);
+    t = clock() - t;
+    double time_taken = ((double)t)/CLOCKS_PER_SEC;
+    printf("filter took %f seconds to execute \n", time_taken);
+
 }
+
+
+//TODO: Send time it took back to swift via processedData struct.
+//TODO: Add multithredading for this C code using threadCount chosen by user in UI
